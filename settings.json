@@ -1,8 +1,8 @@
 {
   "bot": {
     "name": "CHISA",
-    "phoneNumber": "8801806XXXXXX",
-    "customPairingCode": "",
+    "phoneNumber": "8801963202321",
+    "customPairingCode": "SIFATX40",
     "thumbnail": "public/thumbnail.jpg",
     "groupJid": "",
     "groupLink": "https://chat.whatsapp.com/FuyoDJWuOvM5g5HuU4SpT1",
@@ -11,9 +11,9 @@
   "owner": {
     "name": "SIFAT",
     "organization": "CHISA",
-    "id": "8801806XXXXXX",
+    "id": "8801806365125",
     "report": true,
-    "co": ["880193XXXXXX"]
+    "co": ["8801963202321"]
   },
   "sticker": {
     "packname": "CHISA",
@@ -35,7 +35,7 @@
     "gamerestrict": "Game commands are currently restricted to group admins and the owner.",
     "restrict": "This command is currently restricted!",
     "unavailableAtNight": "Bot is unavailable from 12 AM to 6 AM. Please try later.",
-    "footer": "CHISA — by SIFAT ♡",
+    "footer": "",
     "wait": "Please wait...",
     "notFound": "Nothing found! Please try again.",
     "urlInvalid": "Invalid URL! Please provide a valid link."
@@ -43,10 +43,10 @@
   "system": {
     "authAdapter": "multi",
     "usePairingCode": true,
-    "alwaysOnline": true,
+    "alwaysOnline": false,
     "antiBug": true,
-    "antiCall": true,
-    "autoRead": true,
+    "antiCall": false,
+    "autoRead": false,
     "autoTypingOnCmd": true,
     "cooldown": 5000,
     "loggerLevel": "silent",
