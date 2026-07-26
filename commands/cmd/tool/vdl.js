@@ -15,7 +15,7 @@ function detectEndpoint(url, format) {
 
 module.exports = {
     name: "vdl",
-    aliases: ["video", "ytdl", "tiktok", "igdl", "fbdl", "xdl", "videodown"],
+    aliases: ["videodown"],
     category: "tool",
     description: "Download videos from YouTube, TikTok, Instagram, Facebook, Twitter/X, Pinterest",
     usage: "vdl <url> [-f 360|480|720|1080]",
