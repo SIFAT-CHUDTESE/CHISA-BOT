@@ -1,6 +1,6 @@
 "use strict";
 
-const { execFileSync } = require("child_process");
+const { execFileSync, execSync } = require("child_process");
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
@@ -11,6 +11,7 @@ const MAXMB = 49;
 const SEARCH_TTL = 5 * 60 * 1000;
 const EPISODE_TTL = 10 * 60 * 1000;
 const FFMPEG_TIMEOUT = 150000;
+const YTDLP_TIMEOUT = 180000;
 
 if (!global._shikoPending) global._shikoPending = new Map();
 
@@ -128,10 +129,36 @@ async function resolveVideoUrl(iframeSrc) {
 }
 
 async function downloadEpisode(iframeSrc) {
+    const tmpFile = path.join(os.tmpdir(), `shiko_${Date.now()}.mp4`);
+
+    
+    try {
+        execFileSync("yt-dlp", [
+            "--no-playlist",
+            "--no-warnings",
+            "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+            "--merge-output-format", "mp4",
+            "--max-filesize", `${MAXMB}m`,
+            "-o", tmpFile,
+            iframeSrc,
+        ], { timeout: YTDLP_TIMEOUT, stdio: "pipe" });
+
+        if (fs.existsSync(tmpFile) && fs.statSync(tmpFile).size >= 1024) {
+            const buf = fs.readFileSync(tmpFile);
+            try { fs.unlinkSync(tmpFile); } catch {}
+            return buf;
+        }
+    } catch (_ytErr) {
+        
+    } finally {
+        if (fs.existsSync(tmpFile)) { try { fs.unlinkSync(tmpFile); } catch {} }
+    }
+
+  
     const videoUrl = await resolveVideoUrl(iframeSrc);
     if (!videoUrl) throw new Error("Could not resolve video source from player API");
 
-    const tmpFile = path.join(os.tmpdir(), `shiko_${Date.now()}.mp4`);
+    const tmpFile2 = path.join(os.tmpdir(), `shiko_${Date.now()}.mp4`);
     try {
         execFileSync("ffmpeg", [
             "-y", "-i", videoUrl,
@@ -139,18 +166,18 @@ async function downloadEpisode(iframeSrc) {
             "-movflags", "+faststart",
             "-bsf:a", "aac_adtstoasc",
             "-fs", String(MAXMB * 1024 * 1024),
-            tmpFile,
+            tmpFile2,
         ], { timeout: FFMPEG_TIMEOUT, stdio: "pipe" });
 
-        if (!fs.existsSync(tmpFile) || fs.statSync(tmpFile).size < 1024) {
+        if (!fs.existsSync(tmpFile2) || fs.statSync(tmpFile2).size < 1024) {
             throw new Error("ffmpeg produced an empty file");
         }
 
-        const buf = fs.readFileSync(tmpFile);
-        fs.unlinkSync(tmpFile);
+        const buf = fs.readFileSync(tmpFile2);
+        fs.unlinkSync(tmpFile2);
         return buf;
     } catch (err) {
-        if (fs.existsSync(tmpFile)) { try { fs.unlinkSync(tmpFile); } catch {} }
+        if (fs.existsSync(tmpFile2)) { try { fs.unlinkSync(tmpFile2); } catch {} }
         throw err;
     }
 }
