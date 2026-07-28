@@ -129,55 +129,64 @@ async function resolveVideoUrl(iframeSrc) {
 }
 
 async function downloadEpisode(iframeSrc) {
-    const tmpFile = path.join(os.tmpdir(), `shiko_${Date.now()}.mp4`);
+    // Resolve the m3u8 URL first — both yt-dlp and ffmpeg need it
+    const videoUrl = await resolveVideoUrl(iframeSrc);
+    if (!videoUrl) throw new Error("Could not resolve video source from player API");
 
-    
+    const stamp = Date.now();
+    const tmpDir = os.tmpdir();
+
+    // --- Attempt 1: yt-dlp on the direct m3u8 URL ---
+    const ytOut = path.join(tmpDir, `shiko_yt_${stamp}.mp4`);
     try {
         execFileSync("yt-dlp", [
             "--no-playlist",
             "--no-warnings",
+            "--add-header", "Referer:https://animesalt.link/",
+            "--add-header", "Origin:https://animesalt.link",
             "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
             "--merge-output-format", "mp4",
             "--max-filesize", `${MAXMB}m`,
-            "-o", tmpFile,
-            iframeSrc,
+            "-o", ytOut,
+            videoUrl,
         ], { timeout: YTDLP_TIMEOUT, stdio: "pipe" });
 
-        if (fs.existsSync(tmpFile) && fs.statSync(tmpFile).size >= 1024) {
-            const buf = fs.readFileSync(tmpFile);
-            try { fs.unlinkSync(tmpFile); } catch {}
+        if (fs.existsSync(ytOut) && fs.statSync(ytOut).size >= 1024) {
+            const buf = fs.readFileSync(ytOut);
+            try { fs.unlinkSync(ytOut); } catch {}
             return buf;
         }
-    } catch (_ytErr) {
-        
+    } catch (_) {
+        // yt-dlp failed — try ffmpeg
     } finally {
-        if (fs.existsSync(tmpFile)) { try { fs.unlinkSync(tmpFile); } catch {} }
+        if (fs.existsSync(ytOut)) { try { fs.unlinkSync(ytOut); } catch {} }
     }
 
-  
-    const videoUrl = await resolveVideoUrl(iframeSrc);
-    if (!videoUrl) throw new Error("Could not resolve video source from player API");
-
-    const tmpFile2 = path.join(os.tmpdir(), `shiko_${Date.now()}.mp4`);
+    // --- Attempt 2: ffmpeg with allowed_extensions ALL + Referer ---
+    const ffOut = path.join(tmpDir, `shiko_ff_${stamp}.mp4`);
     try {
         execFileSync("ffmpeg", [
-            "-y", "-i", videoUrl,
+            "-y",
+            "-headers", "Referer: https://animesalt.link/\r\nOrigin: https://animesalt.link\r\n",
+            "-allowed_extensions", "ALL",
+            "-protocol_whitelist", "file,crypto,data,http,https,tcp,tls",
+            "-i", videoUrl,
             "-c", "copy",
             "-movflags", "+faststart",
             "-bsf:a", "aac_adtstoasc",
             "-fs", String(MAXMB * 1024 * 1024),
-            tmpFile2,
+            ffOut,
         ], { timeout: FFMPEG_TIMEOUT, stdio: "pipe" });
 
-        if (!fs.existsSync(tmpFile2) || fs.statSync(tmpFile2).size < 1024) {
+        if (!fs.existsSync(ffOut) || fs.statSync(ffOut).size < 1024) {
             throw new Error("ffmpeg produced an empty file");
         }
 
-        const buf = fs.readFileSync(tmpFile2);
-        fs.unlinkSync(tmpFile2);
+        const buf = fs.readFileSync(ffOut);
+        try { fs.unlinkSync(ffOut); } catch {}
         return buf;
     } catch (err) {
-        if (fs.existsSync(tmpFile2)) { try { fs.unlinkSync(tmpFile2); } catch {} }
+        if (fs.existsSync(ffOut)) { try { fs.unlinkSync(ffOut); } catch {} }
         throw err;
     }
 }
