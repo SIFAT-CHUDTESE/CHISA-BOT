@@ -2,7 +2,7 @@
 
 const axios = require("axios");
 
-const API_BASE    = "https://ug2qaiqnf3h.sisko.replit.dev";
+const API_BASE    = "https://aniverse-fojj.onrender.com";
 const MAXMB       = 49;
 const SEARCH_TTL  = 5  * 60 * 1000;
 const EPISODE_TTL = 10 * 60 * 1000;
